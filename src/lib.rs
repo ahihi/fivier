@@ -121,7 +121,7 @@ impl Synth {
             state.sine_wave1_amp.read()
           );
           let pan = 0.5 * state.sine_wave1_pan.read();
-          let ch_amp = match (state.channel, math::pan(pan)) {
+          let ch_amp = match (state.channel, math::pan_constant_power(pan)) {
             (0, (l, _)) => l,
             (_, (_, r)) => r
           };
@@ -146,7 +146,7 @@ impl Synth {
             state.sine_wave2_amp.read()
           );
           let pan = 0.6 * state.sine_wave2_pan.read();
-          let ch_amp = match (state.channel, math::pan(pan)) {
+          let ch_amp = match (state.channel, math::pan_constant_power(pan)) {
             (0, (l, _)) => l,
             (_, (_, r)) => r
           };

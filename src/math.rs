@@ -10,11 +10,20 @@ pub fn sine(frequency: f32, phase: f32, time: f32) -> f32 {
   f32::sin(frequency * time * TAU + phase)
 }
 
-pub fn pan(balance: f32) -> (f32, f32) {
-  let balance_norm = scale(
+pub fn pan_linear(balance: f32) -> (f32, f32) {
+  let p = scale(
     (-1.0, 1.0), (0.0, 1.0),
     f32::max(-1.0, f32::min(1.0, balance))
   );
   
-  (1.0 - balance_norm, balance_norm)  
+  (1.0 - p, p)
+}
+
+pub fn pan_constant_power(balance: f32) -> (f32, f32) {
+  let angle = scale(
+    (-1.0, 1.0), (0.0, 0.25 * TAU),
+    f32::max(-1.0, f32::min(1.0, balance))
+  );
+  
+  (f32::cos(angle), f32::sin(angle))
 }
