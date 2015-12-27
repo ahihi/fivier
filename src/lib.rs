@@ -26,14 +26,21 @@ pub struct Sine {
 
 impl Sine {
   pub fn new(frequency: f32, phase: f32) -> Sine {
-    Sine {
-      phase_inc: math::TAU / SAMPLE_RATE * frequency,
+    let mut sine = Sine {
+      phase_inc: 0.0,
       phase: phase % math::TAU
-    }
+    };
+    sine.set_frequency(frequency);
+    
+    sine
   }
   
   pub fn read(&self) -> f32 {
     f32::sin(self.phase)
+  }
+  
+  pub fn set_frequency(&mut self, frequency: f32) {
+    self.phase_inc = math::TAU / SAMPLE_RATE * frequency;
   }
   
   pub fn advance(&mut self) {        
@@ -46,10 +53,12 @@ struct SynthState {
   channel: u32,
   
   sine_wave1: Sine,
+  sine_wave1_freq: Sine,
   sine_wave1_amp: Sine,
   sine_wave1_pan: Sine,
   
   sine_wave2: Sine,
+  sine_wave2_freq: Sine,
   sine_wave2_amp: Sine,
   sine_wave2_pan: Sine
 }
@@ -74,10 +83,12 @@ impl Synth {
         channel: 0,
         
         sine_wave1: Sine::new(fundamental, 0.0),
+        sine_wave1_freq: Sine::new(0.33, 0.0),
         sine_wave1_amp: Sine::new(2.11, 0.0),
         sine_wave1_pan: Sine::new(0.21, 0.25 * math::TAU),
         
         sine_wave2: Sine::new(1.5 * fundamental, 0.5 * math::TAU),
+        sine_wave2_freq: Sine::new(0.38, 0.333 * math::TAU),
         sine_wave2_amp: Sine::new(2.3, 0.5 * math::TAU),
         sine_wave2_pan: Sine::new(0.17, 0.0)
       }
@@ -95,6 +106,15 @@ impl Synth {
             
       for output_sample in output.iter_mut() {
         let wave1 = {
+          let freq = {
+            let k = 1.03;
+            math::scale(
+              (-1.0, 1.0), (fundamental/k, fundamental*k),
+              state.sine_wave1_freq.read()
+            )
+          };
+          state.sine_wave1.set_frequency(freq);
+          
           let wave = state.sine_wave1.read();
           let amp = math::scale(
             (-1.0, 1.0), (0.1, 0.5),
@@ -110,6 +130,16 @@ impl Synth {
         };
         
         let wave2 = {
+          let freq = {
+            let base = 1.5 * fundamental;
+            let k = 1.03;
+            math::scale(
+              (-1.0, 1.0), (base/k, base*k),
+              state.sine_wave2_freq.read()
+            )
+          };
+          state.sine_wave2.set_frequency(freq);
+          
           let wave = state.sine_wave2.read();
           let amp = math::scale(
             (-1.0, 1.0), (0.1, 0.5),
@@ -132,10 +162,12 @@ impl Synth {
         
         if state.channel == 0 {
           state.sine_wave1.advance();
+          state.sine_wave1_freq.advance();
           state.sine_wave1_amp.advance();
           state.sine_wave1_pan.advance();
           
           state.sine_wave2.advance();
+          state.sine_wave2_freq.advance();
           state.sine_wave2_amp.advance();
           state.sine_wave2_pan.advance();
         }
