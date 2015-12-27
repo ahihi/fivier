@@ -3,6 +3,7 @@ extern crate portaudio;
 pub mod error;
 pub mod math;
 
+use std::f32;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -20,7 +21,37 @@ pub type Callback = pa::StreamCallbackFn<Sample, Sample>;
 
 struct SynthState {
   stream: Stream,
-  index: usize
+  channel: u32,
+  
+  sine_wave1: Sine,
+  sine_wave1_amp: Sine,
+  sine_wave1_pan: Sine,
+  
+  sine_wave2: Sine,
+  sine_wave2_amp: Sine,
+  sine_wave2_pan: Sine
+}
+
+pub struct Sine {
+  phase_inc: f32,
+  phase: f32
+}
+
+impl Sine {
+  pub fn new(frequency: f32, phase: f32) -> Sine {
+    Sine {
+      phase_inc: math::TAU / SAMPLE_RATE * frequency,
+      phase: phase % math::TAU
+    }
+  }
+  
+  pub fn read(&self) -> f32 {
+    f32::sin(self.phase)
+  }
+  
+  pub fn advance(&mut self) {        
+    self.phase = (self.phase + self.phase_inc) % math::TAU;
+  }
 }
 
 pub struct Synth {
@@ -36,10 +67,19 @@ impl Synth {
     let (_output_name, stream_params, stream) =
       try!(Self::init_audio(SAMPLE_RATE as f64));
     
+    let fundamental = 140.0;
     let state = Arc::new(RwLock::new(
       SynthState {
         stream: stream,
-        index: 0
+        channel: 0,
+        
+        sine_wave1: Sine::new(fundamental, 0.0),
+        sine_wave1_amp: Sine::new(2.11, 0.0),
+        sine_wave1_pan: Sine::new(0.21, 0.25 * math::TAU),
+        
+        sine_wave2: Sine::new(1.5 * fundamental, 0.5 * math::TAU),
+        sine_wave2_amp: Sine::new(2.3, 0.5 * math::TAU),
+        sine_wave2_pan: Sine::new(0.21, 0.25 * math::TAU)
       }
     ));
     
@@ -54,40 +94,51 @@ impl Synth {
       let mut state = callback_state.write().unwrap();
             
       for output_sample in output.iter_mut() {
-        let (ch, ch_index) = (state.index % 2, state.index / 2);
-        
-        let time = ch_index as f32 / SAMPLE_RATE;
-        let fundamental = 140.0;
-        
         let wave1 = {
-          let amp = math::scale((-1.0, 1.0), (0.1, 0.5), 
-            math::sine(2.11, 0.0, time)
+          let wave = state.sine_wave1.read();
+          let amp = math::scale(
+            (-1.0, 1.0), (0.1, 0.5),
+            state.sine_wave1_amp.read()
           );
-          let pan = 0.5 * math::sine(0.21, 0.25*math::TAU, time);
-          let ch_amp = match (ch, math::pan(pan)) {
+          let pan = 0.5 * state.sine_wave1_pan.read();
+          let ch_amp = match (state.channel, math::pan(pan)) {
             (0, (l, _)) => l,
             (_, (_, r)) => r
           };
-          ch_amp * amp * math::sine(fundamental, 0.0, time)
+
+          ch_amp * amp * wave
         };
         
         let wave2 = {
-          let amp = math::scale((-1.0, 1.0), (0.1, 0.3), 
-            math::sine(2.3, 0.5*math::TAU, time)
+          let wave = state.sine_wave2.read();
+          let amp = math::scale(
+            (-1.0, 1.0), (0.1, 0.5),
+            state.sine_wave2_amp.read()
           );
-          let pan = 0.6 * math::sine(0.17, 0.0, time);
-          let ch_amp = match (ch, math::pan(pan)) {
+          let pan = 0.6 * state.sine_wave2_pan.read();
+          let ch_amp = match (state.channel, math::pan(pan)) {
             (0, (l, _)) => l,
             (_, (_, r)) => r
           };
-          ch_amp * amp * math::sine(1.5 * fundamental, 0.5*math::TAU, time)
+
+          ch_amp * amp * wave
         };
         
         let mix = wave1 + wave2;
         
         *output_sample = mix;
         
-        state.index += 1;
+        state.channel = (state.channel + 1) % 2;
+        
+        if state.channel == 0 {
+          state.sine_wave1.advance();
+          state.sine_wave1_amp.advance();
+          state.sine_wave1_pan.advance();
+          
+          state.sine_wave2.advance();
+          state.sine_wave2_amp.advance();
+          state.sine_wave2_pan.advance();
+        }
       }
 
       pa::StreamCallbackResult::Continue
