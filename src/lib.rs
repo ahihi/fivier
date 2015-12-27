@@ -83,12 +83,12 @@ impl Synth {
         channel: 0,
         
         sine_wave1: Sine::new(fundamental, 0.0),
-        sine_wave1_freq: Sine::new(0.33, 0.0),
+        sine_wave1_freq: Sine::new(6.33, 0.0),
         sine_wave1_amp: Sine::new(2.11, 0.0),
         sine_wave1_pan: Sine::new(0.21, 0.25 * math::TAU),
         
         sine_wave2: Sine::new(1.5 * fundamental, 0.5 * math::TAU),
-        sine_wave2_freq: Sine::new(0.38, 0.333 * math::TAU),
+        sine_wave2_freq: Sine::new(6.12, 0.333 * math::TAU),
         sine_wave2_amp: Sine::new(2.3, 0.5 * math::TAU),
         sine_wave2_pan: Sine::new(0.17, 0.0)
       }
@@ -107,7 +107,7 @@ impl Synth {
       for output_sample in output.iter_mut() {
         let wave1 = {
           let freq = {
-            let k = 1.03;
+            let k = 1.07;
             math::scale(
               (-1.0, 1.0), (fundamental/k, fundamental*k),
               state.sine_wave1_freq.read()
@@ -132,7 +132,7 @@ impl Synth {
         let wave2 = {
           let freq = {
             let base = 1.5 * fundamental;
-            let k = 1.03;
+            let k = 1.07;
             math::scale(
               (-1.0, 1.0), (base/k, base*k),
               state.sine_wave2_freq.read()
