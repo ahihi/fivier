@@ -1,0 +1,15 @@
+[package]
+name = "fivier"
+version = "0.1.0"
+authors = ["Miranda Kastemaa <miranda@foldplop.com>"]
+
+[lib]
+name = "fivier"
+path = "src/lib.rs"
+
+[[bin]]
+name = "fivier-bin"
+path = "src/main.rs"
+
+[dependencies]
+portaudio = "0.5"
