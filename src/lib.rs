@@ -19,19 +19,6 @@ pub type Sample = f32;
 pub type Stream = pa::Stream<Sample, Sample>;
 pub type Callback = pa::StreamCallbackFn<Sample, Sample>;
 
-struct SynthState {
-  stream: Stream,
-  channel: u32,
-  
-  sine_wave1: Sine,
-  sine_wave1_amp: Sine,
-  sine_wave1_pan: Sine,
-  
-  sine_wave2: Sine,
-  sine_wave2_amp: Sine,
-  sine_wave2_pan: Sine
-}
-
 pub struct Sine {
   phase_inc: f32,
   phase: f32
@@ -52,6 +39,19 @@ impl Sine {
   pub fn advance(&mut self) {        
     self.phase = (self.phase + self.phase_inc) % math::TAU;
   }
+}
+
+struct SynthState {
+  stream: Stream,
+  channel: u32,
+  
+  sine_wave1: Sine,
+  sine_wave1_amp: Sine,
+  sine_wave1_pan: Sine,
+  
+  sine_wave2: Sine,
+  sine_wave2_amp: Sine,
+  sine_wave2_pan: Sine
 }
 
 pub struct Synth {
@@ -79,7 +79,7 @@ impl Synth {
         
         sine_wave2: Sine::new(1.5 * fundamental, 0.5 * math::TAU),
         sine_wave2_amp: Sine::new(2.3, 0.5 * math::TAU),
-        sine_wave2_pan: Sine::new(0.21, 0.25 * math::TAU)
+        sine_wave2_pan: Sine::new(0.17, 0.0)
       }
     ));
     
