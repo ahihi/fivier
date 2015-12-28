@@ -48,6 +48,35 @@ impl Sine {
   }
 }
 
+struct Delay {
+  buffer: Vec<Sample>,
+  index: usize
+}
+
+impl Delay {
+  pub fn new(size: usize) -> Self {
+    let stereo_size = 2 * size;
+    let mut buffer = Vec::with_capacity(stereo_size);
+    for _ in 0 .. stereo_size {
+      buffer.push(0.0);
+    }
+    
+    Delay {
+      buffer: buffer,
+      index: 0
+    }
+  }
+  
+  pub fn read(&self) -> Sample {
+    self.buffer[self.index]
+  }
+  
+  pub fn advance(&mut self, input: Sample) {
+    self.buffer[self.index] = input;
+    self.index = (self.index + 1) % self.buffer.len();
+  }
+}
+
 struct SynthState {
   stream: Stream,
   channel: u32,
@@ -60,7 +89,9 @@ struct SynthState {
   sine_wave2: Sine,
   sine_wave2_freq: Sine,
   sine_wave2_amp: Sine,
-  sine_wave2_pan: Sine
+  sine_wave2_pan: Sine,
+  
+  delay: Delay
 }
 
 pub struct Synth {
@@ -70,13 +101,14 @@ pub struct Synth {
 }
 
 impl Synth {
-  pub fn new(buffer_size: u32) -> Result<Synth, Error> {
-    try!(pa::initialize());
-    
+  pub fn new(buffer_size: u32) -> Result<Self, Error> {
     let (_output_name, stream_params, stream) =
       try!(Self::init_audio(SAMPLE_RATE as f64));
     
     let fundamental = 140.0;
+    
+    let delay_time = 2.2;
+    let delay_buf_len = (delay_time * SAMPLE_RATE) as usize;
     let state = Arc::new(RwLock::new(
       SynthState {
         stream: stream,
@@ -90,7 +122,9 @@ impl Synth {
         sine_wave2: Sine::new(1.5 * fundamental, 0.5 * math::TAU),
         sine_wave2_freq: Sine::new(6.12, 0.333 * math::TAU),
         sine_wave2_amp: Sine::new(2.3, 0.5 * math::TAU),
-        sine_wave2_pan: Sine::new(0.17, 0.0)
+        sine_wave2_pan: Sine::new(0.17, 0.0),
+        
+        delay: Delay::new(delay_buf_len)
       }
     ));
     
@@ -103,7 +137,7 @@ impl Synth {
       _flags: pa::StreamCallbackFlags
     | -> pa::StreamCallbackResult {
       let mut state = callback_state.write().unwrap();
-            
+      
       for output_sample in output.iter_mut() {
         let wave1 = {
           let freq = {
@@ -154,9 +188,10 @@ impl Synth {
           ch_amp * amp * wave
         };
         
-        let mix = wave1 + wave2;
+        let dry_mix = wave1 + wave2;
+        let wet_mix = state.delay.read();
         
-        *output_sample = mix;
+        *output_sample = 0.6*dry_mix + 0.4*wet_mix;
         
         state.channel = (state.channel + 1) % 2;
         
@@ -171,6 +206,8 @@ impl Synth {
           state.sine_wave2_amp.advance();
           state.sine_wave2_pan.advance();
         }
+        
+        state.delay.advance(dry_mix);
       }
 
       pa::StreamCallbackResult::Continue
