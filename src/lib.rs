@@ -188,10 +188,20 @@ impl Synth {
           ch_amp * amp * wave
         };
         
-        let dry_mix = wave1 + wave2;
+        let dry_mix = {
+          let mix = wave1 + wave2;
+          let clip_amp = 0.4;
+          if mix < -clip_amp {
+            -clip_amp
+          } else if mix > clip_amp {
+            clip_amp
+          } else {
+            mix
+          }
+        };
         let wet_mix = state.delay.read();
         
-        *output_sample = 0.6*dry_mix + 0.4*wet_mix;
+        *output_sample = 0.7*dry_mix + 0.3*wet_mix;
         
         state.channel = (state.channel + 1) % 2;
         
