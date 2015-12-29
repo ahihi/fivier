@@ -27,3 +27,13 @@ pub fn pan_constant_power(balance: f32) -> (f32, f32) {
   
   (f32::cos(angle), f32::sin(angle))
 }
+
+pub fn clip_hard(threshold: f32, input: f32) -> f32 {
+  if input < -threshold {
+    -threshold
+  } else if input > threshold {
+    threshold
+  } else {
+    input
+  }
+}
