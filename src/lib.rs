@@ -188,7 +188,7 @@ impl Synth {
           ch_amp * amp * wave
         };
         
-        let dry_mix = math::clip_hard(0.4, wave1 + wave2);
+        let dry_mix = math::clip_cubic(0.5, wave1 + wave2);
         let wet_mix = state.delay.read();
         
         *output_sample = 0.7*dry_mix + 0.3*wet_mix;
